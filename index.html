@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metro Auto Photo — Digital Booth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=DM+Sans:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{--black:#0a0908;--off-black:#111110;--paper:#f0ebe3;--amber:#c8922a;--white:#faf7f2;--strip-width:300px;--strip-photo-h:225px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--black);color:var(--white);font-family:'DM Sans',sans-serif;overflow:hidden}
+/* screens that need internal scroll get it via their own rule below */
+body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:200px 200px}
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .6s ease}
+.screen.active{opacity:1;pointer-events:all}
+#screen-intro{background:var(--black)}
+.intro-layout{display:grid;grid-template-columns:1fr 1fr;width:100%;height:100vh;max-width:1100px}
+.intro-left{display:flex;flex-direction:column;justify-content:center;padding:48px 44px 48px 60px;border-right:1px solid rgba(200,146,42,.2);position:relative;overflow-y:auto;overflow-x:hidden}
+.intro-left::before{content:'';position:absolute;top:44px;left:60px;width:40px;height:2px;background:var(--amber)}
+.intro-eyebrow{font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase;margin-bottom:24px;margin-top:20px}
+.intro-headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(58px,6.5vw,94px);line-height:.92;margin-bottom:20px;color:var(--white)}
+.intro-headline span{color:var(--amber)}
+.intro-body{font-size:13px;line-height:1.7;color:rgba(250,247,242,.48);max-width:320px;margin-bottom:28px;font-weight:300}
+.filter-label{font-family:'Special Elite',monospace;font-size:10px;letter-spacing:.18em;color:rgba(200,146,42,.6);text-transform:uppercase;margin-bottom:12px}
+.filter-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:28px;max-width:460px}
+.filter-card{background:transparent;border:1px solid rgba(200,146,42,.16);cursor:pointer;padding:0;transition:border-color .2s,transform .15s;position:relative;outline:none;display:flex;flex-direction:column;overflow:hidden;border-radius:2px}
+.filter-card:hover{border-color:rgba(200,146,42,.55);transform:translateY(-2px)}
+.filter-card.selected{border-color:var(--amber);border-width:2px}
+.filter-card:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.filter-preview{width:100%;aspect-ratio:3/4;display:block;position:relative;overflow:hidden}
+.filter-preview canvas{width:100%;height:100%;display:block}
+.filter-name{font-family:'Special Elite',monospace;font-size:8px;letter-spacing:.08em;color:rgba(250,247,242,.45);text-transform:uppercase;padding:5px 4px 6px;text-align:center;background:rgba(10,9,8,.65);transition:color .2s;line-height:1.3}
+.filter-card.selected .filter-name{color:var(--amber)}
+.filter-card:hover .filter-name{color:var(--white)}
+.filter-tick{position:absolute;top:4px;right:4px;width:15px;height:15px;background:var(--amber);border-radius:50%;display:none;align-items:center;justify-content:center;z-index:2}
+.filter-tick svg{width:9px;height:9px}
+.filter-card.selected .filter-tick{display:flex}
+.btn-primary{font-family:'Special Elite',monospace;font-size:13px;letter-spacing:.15em;text-transform:uppercase;background:var(--amber);color:var(--black);border:none;padding:16px 38px;cursor:pointer;transition:background .2s,transform .15s;align-self:flex-start;position:relative;outline:none}
+.btn-primary::after{content:'';position:absolute;inset:-3px;border:1px solid var(--amber);opacity:0;transition:opacity .2s}
+.btn-primary:hover{background:#d9a030}.btn-primary:hover::after,.btn-primary:focus-visible::after{opacity:1}
+.btn-primary:active{transform:scale(.98)}
+.intro-right{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:60px 48px;position:relative}
+.corner{position:absolute;width:24px;height:24px;border-color:rgba(200,146,42,.22);border-style:solid}
+.corner-tl{top:24px;left:24px;border-width:1px 0 0 1px}.corner-tr{top:24px;right:24px;border-width:1px 1px 0 0}
+.corner-bl{bottom:24px;left:24px;border-width:0 0 1px 1px}.corner-br{bottom:24px;right:24px;border-width:0 1px 1px 0}
+.intro-steps{display:flex;flex-direction:column;gap:18px;width:100%;max-width:260px;margin-top:44px}
+.step{display:flex;align-items:flex-start;gap:14px}
+.step-num{font-family:'Special Elite',monospace;font-size:11px;color:var(--amber);min-width:20px;padding-top:1px}
+.step-text{font-size:12px;color:rgba(250,247,242,.4);line-height:1.55;font-weight:300}
+#screen-camera{background:var(--off-black)}
+.camera-container{position:relative;width:100%;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.camera-topbar{position:absolute;top:0;left:0;right:0;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(200,146,42,.1);background:rgba(10,9,8,.88);backdrop-filter:blur(8px);z-index:10}
+.camera-brand{font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase}
+.shot-counter{display:flex;gap:8px;align-items:center}
+.shot-dot{width:8px;height:8px;border:1px solid rgba(200,146,42,.32);border-radius:50%;transition:all .3s}
+.shot-dot.taken{background:var(--amber);border-color:var(--amber)}
+.shot-dot.current{border-color:var(--amber);animation:pulse-dot 1s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{box-shadow:0 0 4px var(--amber)}50%{box-shadow:0 0 14px var(--amber)}}
+.video-wrapper{position:relative;width:min(500px,88vw);aspect-ratio:4/3;border:2px solid rgba(200,146,42,.2);overflow:hidden;background:#000}
+.video-wrapper::before{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.07) 3px,rgba(0,0,0,.07) 4px)}
+.video-wrapper::after{content:'';position:absolute;inset:0;z-index:4;pointer-events:none;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.65) 100%)}
+#video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);position:absolute;top:0;left:0;opacity:0}
+#live-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;display:block}
+.flash-overlay{position:absolute;inset:0;background:#f0ebe3;z-index:8;opacity:0;pointer-events:none}
+.countdown-display{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.countdown-number{font-family:'Bebas Neue',sans-serif;font-size:160px;color:var(--white);opacity:0;transform:scale(1.3);transition:opacity .16s,transform .16s;text-shadow:0 0 60px rgba(200,146,42,.5),0 0 20px rgba(0,0,0,.9);line-height:1}
+.countdown-number.show{opacity:.95;transform:scale(1)}
+.camera-bottombar{position:absolute;bottom:0;left:0;right:0;padding:16px 28px 22px;display:flex;align-items:center;justify-content:center;background:rgba(10,9,8,.88);backdrop-filter:blur(8px);border-top:1px solid rgba(200,146,42,.1);flex-direction:column;gap:10px}
+.pose-instruction{font-family:'Special Elite',monospace;font-size:13px;letter-spacing:.08em;color:rgba(200,146,42,.85);min-height:20px;text-align:center;transition:opacity .35s}
+.pose-sub{font-size:11px;color:rgba(250,247,242,.32);font-weight:300;text-align:center;min-height:16px;letter-spacing:.02em}
+.shoot-btn{width:64px;height:64px;border-radius:50%;background:transparent;border:2px solid var(--amber);cursor:pointer;position:relative;transition:transform .15s,box-shadow .2s;outline:none;margin-top:4px}
+.shoot-btn::before{content:'';position:absolute;inset:8px;border-radius:50%;background:var(--amber);transition:background .2s}
+.shoot-btn:hover{box-shadow:0 0 20px rgba(200,146,42,.35)}.shoot-btn:hover::before{background:#d9a030}
+.shoot-btn:active{transform:scale(.91)}.shoot-btn:focus-visible{box-shadow:0 0 0 3px rgba(200,146,42,.5)}
+.shoot-btn:disabled{opacity:.22;cursor:not-allowed}
+.camera-error{font-family:'Special Elite',monospace;font-size:13px;color:rgba(200,146,42,.7);letter-spacing:.08em;text-align:center;padding:14px;display:none}
+#screen-result{background:var(--black);overflow-y:scroll;justify-content:flex-start;align-items:stretch}
+.result-layout{display:grid;grid-template-columns:auto 1fr;gap:52px;align-items:center;width:100%;max-width:880px;padding:52px 44px;margin:0 auto}
+.photo-strip{background:#0a0908;width:var(--strip-width);padding:13px 13px 0 13px;display:flex;flex-direction:column;gap:5px;box-shadow:0 28px 70px rgba(0,0,0,.85),0 6px 20px rgba(0,0,0,.6);outline:1px solid rgba(255,255,255,.04)}
+.strip-photo{width:100%;height:var(--strip-photo-h);display:block;object-fit:cover;background:#1a1a18}
+.strip-footer{padding:11px 0 14px;display:flex;align-items:center;justify-content:space-between}
+.strip-date{font-family:'Special Elite',monospace;font-size:9px;color:rgba(250,247,242,.4);letter-spacing:.12em}
+.strip-brand{font-family:'Special Elite',monospace;font-size:8px;color:rgba(200,146,42,.4);letter-spacing:.15em;text-transform:uppercase}
+.result-panel{display:flex;flex-direction:column;gap:24px}
+.result-eyebrow{font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase}
+.result-headline{font-family:'Bebas Neue',sans-serif;font-size:clamp(42px,5vw,72px);line-height:.95;color:var(--white)}
+.result-body{font-size:13px;line-height:1.7;color:rgba(250,247,242,.4);max-width:270px;font-weight:300}
+.filter-badge{display:inline-block;font-family:'Special Elite',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(200,146,42,.28);padding:3px 9px}
+.result-actions{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.btn-download{font-family:'Special Elite',monospace;font-size:13px;letter-spacing:.15em;text-transform:uppercase;background:var(--amber);color:var(--black);border:none;padding:15px 34px;cursor:pointer;transition:background .2s;outline:none;position:relative}
+.btn-download::after{content:'';position:absolute;inset:-3px;border:1px solid var(--amber);opacity:0;transition:opacity .2s}
+.btn-download:hover{background:#d9a030}.btn-download:hover::after,.btn-download:focus-visible::after{opacity:1}
+.btn-retake{font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.15em;text-transform:uppercase;background:transparent;color:rgba(250,247,242,.3);border:1px solid rgba(250,247,242,.13);padding:12px 28px;cursor:pointer;transition:all .2s;outline:none}
+.btn-retake:hover{color:var(--white);border-color:rgba(250,247,242,.38)}.btn-retake:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+#screen-intro.active .intro-eyebrow{animation:fadeUp .6s ease .1s both}
+#screen-intro.active .intro-headline{animation:fadeUp .6s ease .18s both}
+#screen-intro.active .intro-body{animation:fadeUp .6s ease .26s both}
+#screen-intro.active .filter-label{animation:fadeUp .6s ease .3s both}
+#screen-intro.active .filter-grid{animation:fadeUp .6s ease .36s both}
+#screen-intro.active .btn-primary{animation:fadeUp .6s ease .46s both}
+#screen-intro.active .intro-steps{animation:fadeUp .6s ease .4s both}
+#screen-result.active .photo-strip{animation:fadeUp .7s ease .1s both}
+#screen-result.active .result-panel>*{animation:fadeUp .6s ease .28s both}
+.mute-btn{position:fixed;bottom:18px;right:18px;z-index:1000;background:rgba(10,9,8,.72);border:1px solid rgba(200,146,42,.22);color:rgba(200,146,42,.55);font-family:'Special Elite',monospace;font-size:10px;letter-spacing:.1em;padding:7px 13px;cursor:pointer;transition:all .2s;outline:none;backdrop-filter:blur(8px)}
+.mute-btn:hover{border-color:var(--amber);color:var(--amber)}.mute-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media(max-width:700px){
+  .intro-layout{grid-template-columns:1fr}.intro-right{display:none}
+  .intro-left{padding:36px 24px;border-right:none}
+  .result-layout{grid-template-columns:1fr;padding:28px 18px 48px;gap:32px;justify-items:center}
+  .result-panel{align-items:center;text-align:center}.result-actions{align-items:center}
+  :root{--strip-width:260px;--strip-photo-h:195px}
+}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<section id="screen-intro" class="screen active" aria-label="Photobooth welcome">
+  <div class="intro-layout">
+    <div class="intro-left">
+      <p class="intro-eyebrow">Metro Auto Photo &mdash; Digital Booth</p>
+      <h1 class="intro-headline">SIT.<br>LOOK.<br><span>SHOOT.</span></h1>
+      <p class="intro-body">Three shots. Three poses. One vintage strip to keep forever. Australia&rsquo;s analogue booth, now in your browser.</p>
+      <p class="filter-label">Choose your film</p>
+      <div class="filter-grid" role="group" aria-label="Film filter selection" id="filter-grid"></div>
+      <button class="btn-primary" id="btn-start">Open the Booth &rarr;</button>
+    </div>
+    <div class="intro-right">
+      <div class="corner corner-tl"></div><div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div><div class="corner corner-br"></div>
+      <svg viewBox="0 0 200 280" width="180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect x="30" y="20" width="140" height="200" rx="4" fill="none" stroke="rgba(200,146,42,.35)" stroke-width="1.5"/>
+        <rect x="50" y="40" width="100" height="80" rx="2" fill="none" stroke="rgba(200,146,42,.25)" stroke-width="1"/>
+        <ellipse cx="100" cy="80" rx="28" ry="32" fill="none" stroke="rgba(200,146,42,.16)" stroke-width="1"/>
+        <circle cx="89" cy="72" r="4" fill="none" stroke="rgba(200,146,42,.25)" stroke-width="1"/>
+        <circle cx="111" cy="72" r="4" fill="none" stroke="rgba(200,146,42,.25)" stroke-width="1"/>
+        <path d="M87 90 Q100 100 113 90" fill="none" stroke="rgba(200,146,42,.25)" stroke-width="1"/>
+        <rect x="88" y="134" width="24" height="3" rx="1.5" fill="rgba(200,146,42,.35)"/>
+        <text x="100" y="148" text-anchor="middle" font-family="monospace" font-size="6" fill="rgba(200,146,42,.35)" letter-spacing="1">CARD ONLY</text>
+        <circle cx="100" cy="168" r="10" fill="none" stroke="rgba(200,146,42,.35)" stroke-width="1.5"/>
+        <circle cx="100" cy="168" r="6" fill="rgba(200,146,42,.16)"/>
+        <rect x="60" y="196" width="80" height="6" rx="1" fill="none" stroke="rgba(200,146,42,.25)" stroke-width="1"/>
+        <line x1="50" y1="220" x2="40" y2="260" stroke="rgba(200,146,42,.2)" stroke-width="1.5"/>
+        <line x1="150" y1="220" x2="160" y2="260" stroke="rgba(200,146,42,.2)" stroke-width="1.5"/>
+        <circle cx="100" cy="20" r="5" fill="rgba(200,146,42,.1)" stroke="rgba(200,146,42,.35)" stroke-width="1"/>
+      </svg>
+      <div class="intro-steps">
+        <div class="step"><span class="step-num">01</span><span class="step-text">Choose your film, open the booth.</span></div>
+        <div class="step"><span class="step-num">02</span><span class="step-text">Press shoot &mdash; three automatic shots fire in sequence.</span></div>
+        <div class="step"><span class="step-num">03</span><span class="step-text">Your vintage strip is developed instantly.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="screen-camera" class="screen" aria-label="Camera viewfinder">
+  <div class="camera-container">
+    <div class="camera-topbar">
+      <span class="camera-brand">Metro Auto Photo</span>
+      <div class="shot-counter" role="status" aria-label="Shot progress">
+        <div class="shot-dot" id="dot-1"></div>
+        <div class="shot-dot" id="dot-2"></div>
+        <div class="shot-dot" id="dot-3"></div>
+      </div>
+    </div>
+    <div class="video-wrapper">
+      <video id="video" autoplay playsinline muted aria-hidden="true"></video>
+      <canvas id="live-canvas" aria-hidden="true"></canvas>
+      <div class="countdown-display" aria-live="assertive" aria-atomic="true">
+        <div class="countdown-number" id="countdown-num" aria-hidden="true"></div>
+      </div>
+      <div class="flash-overlay" id="flash-overlay" aria-hidden="true"></div>
+    </div>
+    <p class="camera-error" id="camera-error">Camera access denied. Please allow camera permissions and reload.</p>
+    <div class="camera-bottombar">
+      <p class="pose-instruction" id="pose-instruction" aria-live="polite">Ready? Press shoot &mdash; all three fire automatically.</p>
+      <p class="pose-sub" id="pose-sub">Sit back, relax, and let the booth do its thing.</p>
+      <button class="shoot-btn" id="btn-shoot" aria-label="Start photo sequence"></button>
+    </div>
+  </div>
+</section>
+
+<section id="screen-result" class="screen" aria-label="Your photo strip">
+  <div class="result-layout">
+    <div>
+      <div class="photo-strip" id="photo-strip" role="img" aria-label="Your vintage photo strip">
+        <img class="strip-photo" id="strip-photo-1" alt="Pose 1">
+        <img class="strip-photo" id="strip-photo-2" alt="Pose 2">
+        <img class="strip-photo" id="strip-photo-3" alt="Pose 3">
+        <div class="strip-footer">
+          <span class="strip-date" id="strip-date"></span>
+          <span class="strip-brand">METRO AUTO PHOTO</span>
+        </div>
+      </div>
+    </div>
+    <div class="result-panel">
+      <p class="result-eyebrow">Your strip is ready</p>
+      <h2 class="result-headline">YOUR<br>MOMENT<br>CAPTURED.</h2>
+      <p class="result-body">A tangible memory from Australia&rsquo;s photobooth people. Download your strip and keep it forever.</p>
+      <span class="filter-badge" id="result-filter-badge"></span>
+      <div class="result-actions">
+        <button class="btn-download" id="btn-download">&darr; Download Strip</button>
+        <button class="btn-retake" id="btn-retake">Retake</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<button class="mute-btn" id="mute-btn" aria-label="Toggle sound">&#128266; Sound</button>
+<canvas id="filter-canvas" style="display:none" aria-hidden="true"></canvas>
+<canvas id="strip-canvas" style="display:none" aria-hidden="true"></canvas>
+
+<script>
+(function(){
+'use strict';
+
+var FILTERS=[
+  {id:'classic',name:'Classic B&W',desc:'Silver gelatin. Pure.',
+   curve:[[0,0],[80,68],[128,122],[200,208],[255,255]],
+   channelMix:null,grainAmt:13,liftBlacks:0,fadeHighlights:0,tint:null},
+  {id:'fuji400',name:'Fuji 400H',desc:'Lifted shadows, green breath.',
+   curve:[[0,22],[64,72],[128,122],[200,200],[255,236]],
+   channelMix:[-4,7,-3],grainAmt:20,liftBlacks:22,fadeHighlights:16,tint:[208,218,202]},
+  {id:'kodak',name:'Kodak T-MAX',desc:'Inky blacks. Crisp whites.',
+   curve:[[0,0],[55,30],[128,132],[185,220],[255,255]],
+   channelMix:null,grainAmt:8,liftBlacks:0,fadeHighlights:0,tint:null},
+  {id:'expired',name:'Expired Film',desc:'Faded, warm, beautifully wrong.',
+   curve:[[0,28],[128,130],[255,216]],
+   channelMix:[22,8,-20],grainAmt:30,liftBlacks:28,fadeHighlights:28,tint:[228,208,168]},
+  {id:'highcon',name:'High Contrast',desc:'Maximum drama.',
+   curve:[[0,0],[50,10],[128,148],[210,250],[255,255]],
+   channelMix:null,grainAmt:6,liftBlacks:0,fadeHighlights:0,tint:null}
+];
+
+var currentFilterId='classic';
+var capturedImages=[];
+var stream=null;
+var liveRafId=null;
+var isShooting=false;
+var muted=false;
+
+/* AUDIO */
+var AudioCtx=window.AudioContext||window.webkitAudioContext;
+var actx=null;
+function getCtx(){
+  if(!actx){try{actx=new AudioCtx();}catch(e){return null;}}
+  if(actx.state==='suspended')actx.resume();
+  return actx;
+}
+function playTick(){
+  if(muted)return;var ctx=getCtx();if(!ctx)return;
+  var now=ctx.currentTime;
+  var o1=ctx.createOscillator(),g1=ctx.createGain();
+  o1.connect(g1);g1.connect(ctx.destination);
+  o1.type='sine';o1.frequency.value=1100;
+  g1.gain.setValueAtTime(0,now);g1.gain.linearRampToValueAtTime(.4,now+.008);g1.gain.exponentialRampToValueAtTime(.001,now+.09);
+  o1.start(now);o1.stop(now+.1);
+  var o2=ctx.createOscillator(),g2=ctx.createGain();
+  o2.connect(g2);g2.connect(ctx.destination);
+  o2.type='sine';o2.frequency.value=75;
+  g2.gain.setValueAtTime(0,now);g2.gain.linearRampToValueAtTime(.28,now+.01);g2.gain.exponentialRampToValueAtTime(.001,now+.13);
+  o2.start(now);o2.stop(now+.15);
+}
+function playShutter(){
+  if(muted)return;var ctx=getCtx();if(!ctx)return;
+  var now=ctx.currentTime;
+  var bufSize=Math.floor(ctx.sampleRate*.09);
+  var buf=ctx.createBuffer(1,bufSize,ctx.sampleRate);
+  var data=buf.getChannelData(0);
+  for(var i=0;i<bufSize;i++)data[i]=(Math.random()*2-1);
+  var src=ctx.createBufferSource();src.buffer=buf;
+  var bpf=ctx.createBiquadFilter();bpf.type='bandpass';bpf.frequency.value=2600;bpf.Q.value=1.2;
+  var gn=ctx.createGain();gn.gain.setValueAtTime(1,now);gn.gain.exponentialRampToValueAtTime(.001,now+.13);
+  src.connect(bpf);bpf.connect(gn);gn.connect(ctx.destination);src.start(now);src.stop(now+.14);
+  var o3=ctx.createOscillator(),g3=ctx.createGain();
+  o3.connect(g3);g3.connect(ctx.destination);
+  o3.type='triangle';o3.frequency.setValueAtTime(130,now+.04);o3.frequency.exponentialRampToValueAtTime(38,now+.2);
+  g3.gain.setValueAtTime(0,now+.04);g3.gain.linearRampToValueAtTime(.45,now+.06);g3.gain.exponentialRampToValueAtTime(.001,now+.24);
+  o3.start(now+.04);o3.stop(now+.25);
+  var o4=ctx.createOscillator(),g4=ctx.createGain();
+  o4.connect(g4);g4.connect(ctx.destination);
+  o4.type='sawtooth';o4.frequency.setValueAtTime(240,now+.16);o4.frequency.linearRampToValueAtTime(70,now+.5);
+  g4.gain.setValueAtTime(0,now+.16);g4.gain.linearRampToValueAtTime(.1,now+.22);g4.gain.exponentialRampToValueAtTime(.001,now+.52);
+  o4.start(now+.16);o4.stop(now+.55);
+}
+function playDing(){
+  if(muted)return;var ctx=getCtx();if(!ctx)return;
+  var now=ctx.currentTime;
+  [523,659,784].forEach(function(freq,i){
+    var o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type='sine';o.frequency.value=freq;
+    var t=now+i*.13;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.22,t+.02);g.gain.exponentialRampToValueAtTime(.001,t+.75);
+    o.start(t);o.stop(t+.8);
+  });
+}
+
+/* FILTER ENGINE */
+function clamp(v){return Math.max(0,Math.min(255,Math.round(v)));}
+function toneCurve(val,pts){
+  if(val<=pts[0][0])return clamp(pts[0][1]);
+  for(var i=0;i<pts.length-1;i++){
+    var x0=pts[i][0],y0=pts[i][1],x1=pts[i+1][0],y1=pts[i+1][1];
+    if(val<=x1){var t=(val-x0)/(x1-x0);return clamp(y0+t*(y1-y0));}
+  }
+  return clamp(pts[pts.length-1][1]);
+}
+function buildLUT(curve){var lut=new Uint8Array(256);for(var v=0;v<256;v++)lut[v]=toneCurve(v,curve);return lut;}
+function applyFilter(d,filter){
+  var lut=buildLUT(filter.curve);
+  var cm=filter.channelMix,lb=filter.liftBlacks||0,fh=filter.fadeHighlights||0,tint=filter.tint;
+  for(var i=0;i<d.length;i+=4){
+    var luma=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
+    luma=lut[clamp(luma)];
+    var nr,ng,nb;
+    if(tint){var s=.40;nr=clamp(luma*(1-s)+tint[0]*s);ng=clamp(luma*(1-s)+tint[1]*s);nb=clamp(luma*(1-s)+tint[2]*s);}
+    else{nr=ng=nb=luma;}
+    if(cm){nr=clamp(nr+cm[0]);ng=clamp(ng+cm[1]);nb=clamp(nb+cm[2]);}
+    if(lb){nr=clamp(nr+lb*(1-nr/255));ng=clamp(ng+lb*(1-ng/255));nb=clamp(nb+lb*(1-nb/255));}
+    if(fh){var f=fh/255;nr=clamp(nr-f*nr);ng=clamp(ng-f*ng);nb=clamp(nb-f*nb);}
+    d[i]=nr;d[i+1]=ng;d[i+2]=nb;
+  }
+}
+function addGrain(ctx,w,h,amt){
+  var gc=document.createElement('canvas');gc.width=w;gc.height=h;
+  var gctx=gc.getContext('2d');var gd=gctx.createImageData(w,h);
+  for(var i=0;i<gd.data.length;i+=4){var n=(Math.random()-.5)*amt*2;gd.data[i]=gd.data[i+1]=gd.data[i+2]=128+n;gd.data[i+3]=amt;}
+  gctx.putImageData(gd,0,0);
+  ctx.globalCompositeOperation='overlay';ctx.drawImage(gc,0,0);ctx.globalCompositeOperation='source-over';
+}
+function addVignette(ctx,w,h){
+  var vig=ctx.createRadialGradient(w/2,h/2,h*.18,w/2,h/2,h*.88);
+  vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(0,0,0,.58)');
+  ctx.fillStyle=vig;ctx.fillRect(0,0,w,h);
+}
+
+/* PREVIEW RENDER */
+function renderPreview(canvas,filter){
+  var w=canvas.width,h=canvas.height;
+  var ctx=canvas.getContext('2d');
+  var bg=ctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,'#242018');bg.addColorStop(1,'#0d0c0b');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+  for(var j=0;j<40;j++){
+    ctx.fillStyle='rgba('+(80+Math.random()*60)+','+(70+Math.random()*50)+','+(50+Math.random()*40)+',0.06)';
+    ctx.beginPath();ctx.arc(Math.random()*w,Math.random()*h,Math.random()*4,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#2e2820';
+  ctx.beginPath();ctx.moveTo(w*.05,h);ctx.lineTo(w*.05,h*.72);
+  ctx.quadraticCurveTo(w*.1,h*.62,w*.3,h*.66);ctx.lineTo(w*.7,h*.66);
+  ctx.quadraticCurveTo(w*.9,h*.62,w*.95,h*.72);ctx.lineTo(w*.95,h);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#3e3630';ctx.fillRect(w*.42,h*.55,w*.16,h*.14);
+  ctx.fillStyle='#4a423c';
+  ctx.beginPath();ctx.ellipse(w/2,h*.42,w*.24,h*.24,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1e1a16';
+  ctx.beginPath();ctx.ellipse(w/2,h*.28,w*.25,h*.1,0,0,Math.PI);ctx.fill();
+  ctx.fillRect(w*.26,h*.23,w*.48,h*.12);
+  ctx.fillStyle='#1a1510';
+  ctx.beginPath();ctx.ellipse(w*.38,h*.41,w*.042,h*.034,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(w*.62,h*.41,w*.042,h*.034,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.beginPath();ctx.arc(w*.375,h*.402,w*.012,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(w*.615,h*.402,w*.012,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#2a1e14';ctx.lineWidth=1.4;
+  ctx.beginPath();ctx.arc(w/2,h*.49,w*.09,.2,Math.PI-.2);ctx.stroke();
+  var imgd=ctx.getImageData(0,0,w,h);
+  applyFilter(imgd.data,filter);
+  ctx.putImageData(imgd,0,0);
+  addGrain(ctx,w,h,filter.grainAmt*2.2);
+  addVignette(ctx,w,h);
+}
+
+/* BUILD FILTER CARDS */
+var filterGrid=document.getElementById('filter-grid');
+FILTERS.forEach(function(f){
+  var card=document.createElement('button');
+  card.className='filter-card'+(f.id===currentFilterId?' selected':'');
+  card.dataset.filter=f.id;
+  card.setAttribute('aria-pressed',f.id===currentFilterId?'true':'false');
+  card.setAttribute('aria-label',f.name+': '+f.desc);
+  card.title=f.desc;
+  var preview=document.createElement('div');preview.className='filter-preview';
+  var canvas=document.createElement('canvas');canvas.width=80;canvas.height=107;
+  preview.appendChild(canvas);
+  var tick=document.createElement('div');tick.className='filter-tick';
+  tick.innerHTML='<svg viewBox="0 0 10 10"><polyline points="2,5 4,8 8,2" fill="none" stroke="#0a0908" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var label=document.createElement('div');label.className='filter-name';label.textContent=f.name;
+  card.appendChild(preview);card.appendChild(tick);card.appendChild(label);
+  filterGrid.appendChild(card);
+  setTimeout(function(){renderPreview(canvas,f);},0);
+  card.addEventListener('click',function(){
+    document.querySelectorAll('.filter-card').forEach(function(c){c.classList.remove('selected');c.setAttribute('aria-pressed','false');});
+    card.classList.add('selected');card.setAttribute('aria-pressed','true');
+    currentFilterId=f.id;
+    if(stream&&liveRafId){cancelAnimationFrame(liveRafId);liveRafId=null;startLiveFilter();}
+  });
+});
+
+/* SCREENS */
+var screens={intro:document.getElementById('screen-intro'),camera:document.getElementById('screen-camera'),result:document.getElementById('screen-result')};
+function showScreen(name){Object.keys(screens).forEach(function(k){screens[k].classList.toggle('active',k===name);});}
+
+var video=document.getElementById('video');
+var liveCanvas=document.getElementById('live-canvas');
+var liveCtx=liveCanvas.getContext('2d');
+var filterCanvas=document.getElementById('filter-canvas');
+var filterCtx=filterCanvas.getContext('2d');
+var stripCanvas=document.getElementById('strip-canvas');
+var stripCtx=stripCanvas.getContext('2d');
+var flashOverlay=document.getElementById('flash-overlay');
+var countdownNum=document.getElementById('countdown-num');
+var poseInstruction=document.getElementById('pose-instruction');
+var poseSub=document.getElementById('pose-sub');
+var btnShoot=document.getElementById('btn-shoot');
+var btnStart=document.getElementById('btn-start');
+var btnDownload=document.getElementById('btn-download');
+var btnRetake=document.getElementById('btn-retake');
+var cameraError=document.getElementById('camera-error');
+var muteBtn=document.getElementById('mute-btn');
+
+var POSES=[
+  {main:'Shot 1 of 3 \u2014 Just be you.',sub:'Natural. Effortless. (You\u2019ve got this.)'},
+  {main:'Shot 2 of 3 \u2014 Mix it up!',sub:'New angle? Smirk? Full charisma unlocked?'},
+  {main:'Shot 3 of 3 \u2014 Make it legendary.',sub:'Your ancestors are watching. No pressure.'}
+];
+
+/* LIVE FILTER LOOP */
+function startLiveFilter(){
+  var filter=FILTERS.find(function(f){return f.id===currentFilterId;});
+  function frame(){
+    if(!stream)return;
+    var w=video.videoWidth||0,h=video.videoHeight||0;
+    if(w===0||h===0){liveRafId=requestAnimationFrame(frame);return;}
+    liveCanvas.width=w;liveCanvas.height=h;
+    liveCtx.save();liveCtx.translate(w,0);liveCtx.scale(-1,1);
+    liveCtx.drawImage(video,0,0,w,h);liveCtx.restore();
+    var imgd=liveCtx.getImageData(0,0,w,h);
+    applyFilter(imgd.data,filter);
+    liveCtx.putImageData(imgd,0,0);
+    addGrain(liveCtx,w,h,filter.grainAmt);
+    addVignette(liveCtx,w,h);
+    liveRafId=requestAnimationFrame(frame);
+  }
+  liveRafId=requestAnimationFrame(frame);
+}
+
+/* START */
+btnStart.addEventListener('click',function(){
+  try{getCtx();}catch(e){}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false})
+  .then(function(s){
+    stream=s;video.srcObject=stream;video.play();
+    resetBooth();showScreen('camera');startLiveFilter();
+  }).catch(function(){
+    showScreen('camera');cameraError.style.display='block';btnShoot.disabled=true;
+  });
+});
+
+function resetBooth(){
+  capturedImages=[];isShooting=false;btnShoot.disabled=false;
+  cameraError.style.display='none';updateDots(0);
+  poseInstruction.textContent='Ready? Press shoot \u2014 all three fire automatically.';
+  poseSub.textContent='Sit back, relax, and let the booth do its thing.';
+  countdownNum.classList.remove('show');flashOverlay.style.opacity='0';
+}
+function updateDots(taken){
+  [1,2,3].forEach(function(i){
+    var dot=document.getElementById('dot-'+i);
+    dot.classList.remove('taken','current');
+    if(i<=taken)dot.classList.add('taken');
+    else if(i===taken+1)dot.classList.add('current');
+  });
+}
+
+/* AUTO SHOT SEQUENCE */
+btnShoot.addEventListener('click',function(){
+  if(isShooting)return;isShooting=true;btnShoot.disabled=true;runShot(0);
+});
+function runShot(idx){
+  if(idx>=3){
+    poseInstruction.textContent='Developing your strip\u2026';
+    poseSub.textContent='The chemicals are doing their thing. Smells a bit, tbh.';
+    setTimeout(function(){playDing();showResult();},1500);return;
+  }
+  var pose=POSES[idx];
+  poseInstruction.textContent=pose.main;poseSub.textContent=pose.sub;updateDots(idx);
+  var count=3;showCountdown(count);playTick();
+  var interval=setInterval(function(){
+    count--;
+    if(count>0){showCountdown(count);playTick();}
+    else{clearInterval(interval);countdownNum.classList.remove('show');doCapture(idx,function(){runShot(idx+1);});}
+  },1000);
+}
+function showCountdown(n){
+  countdownNum.textContent=n;countdownNum.classList.remove('show');
+  void countdownNum.offsetWidth;countdownNum.classList.add('show');
+}
+function doCapture(idx,cb){
+  flashOverlay.style.transition='none';flashOverlay.style.opacity='1';
+  setTimeout(function(){flashOverlay.style.transition='opacity .55s ease-out';flashOverlay.style.opacity='0';},55);
+  playShutter();
+  var w=liveCanvas.width||640,h=liveCanvas.height||480;
+  filterCanvas.width=w;filterCanvas.height=h;
+  filterCtx.drawImage(liveCanvas,0,0);
+  capturedImages.push(filterCanvas.toDataURL('image/jpeg',.93));
+  updateDots(idx+1);
+  setTimeout(cb,950);
+}
+
+/* RESULT */
+function showResult(){
+  ['1','2','3'].forEach(function(n,i){document.getElementById('strip-photo-'+n).src=capturedImages[i];});
+  var now=new Date();
+  var ds=now.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' . ');
+  document.getElementById('strip-date').textContent=ds;
+  var fNames={classic:'Classic B&W',fuji400:'Fuji 400H',kodak:'Kodak T-MAX',expired:'Expired Film',highcon:'High Contrast'};
+  document.getElementById('result-filter-badge').textContent=fNames[currentFilterId]||currentFilterId;
+  if(liveRafId){cancelAnimationFrame(liveRafId);liveRafId=null;}
+  if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}
+  showScreen('result');
+}
+
+/* DOWNLOAD */
+btnDownload.addEventListener('click',function(){
+  var sw=300,ph=225,gap=5,pad=13,footerH=48;
+  var totalW=sw,totalH=pad+ph*3+gap*2+footerH+pad;
+  var sc=2;stripCanvas.width=totalW*sc;stripCanvas.height=totalH*sc;
+  stripCtx.scale(sc,sc);stripCtx.fillStyle='#0a0908';stripCtx.fillRect(0,0,totalW,totalH);
+  var jobs=capturedImages.map(function(src,i){
+    return new Promise(function(res){
+      var img=new Image();img.onload=function(){
+        var x=pad,y=pad+i*(ph+gap),sw2=totalW-pad*2;
+        var scW=sw2/img.width,scH=ph/img.height,sc2=Math.max(scW,scH);
+        var dw=img.width*sc2,dh=img.height*sc2,dx=x+(sw2-dw)/2,dy=y+(ph-dh)/2;
+        stripCtx.save();stripCtx.rect(x,y,sw2,ph);stripCtx.clip();stripCtx.drawImage(img,dx,dy,dw,dh);stripCtx.restore();res();
+      };img.src=src;
+    });
+  });
+  Promise.all(jobs).then(function(){
+    var now=new Date();
+    var ds=now.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' . ');
+    var fy=pad+ph*3+gap*2+27;
+    stripCtx.font='9px "Special Elite",monospace';stripCtx.fillStyle='rgba(250,247,242,.42)';stripCtx.fillText(ds,pad,fy);
+    stripCtx.textAlign='right';stripCtx.fillStyle='rgba(200,146,42,.42)';stripCtx.fillText('METRO AUTO PHOTO',totalW-pad,fy);
+    stripCtx.textAlign='left';
+    var a=document.createElement('a');a.download='metro-auto-photo-'+Date.now()+'.jpg';
+    a.href=stripCanvas.toDataURL('image/jpeg',.95);a.click();
+  });
+});
+
+/* RETAKE */
+btnRetake.addEventListener('click',function(){
+  if(liveRafId){cancelAnimationFrame(liveRafId);liveRafId=null;}
+  showScreen('intro');
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false})
+  .then(function(s){stream=s;video.srcObject=stream;video.play();}).catch(function(){});
+});
+
+/* MUTE */
+muteBtn.addEventListener('click',function(){
+  muted=!muted;
+  muteBtn.textContent=muted?'\uD83D\uDD07 Sound':'\uD83D\uDD0A Sound';
+  muteBtn.setAttribute('aria-label',muted?'Unmute sound':'Mute sound');
+});
+
+})();
+</script>
+</body>
+</html>
