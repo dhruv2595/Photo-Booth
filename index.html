@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -78,7 +79,7 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 .camera-error{font-family:'Special Elite',monospace;font-size:13px;color:rgba(200,146,42,.7);letter-spacing:.08em;text-align:center;padding:14px;display:none}
 #screen-result{background:var(--black);overflow-y:scroll;justify-content:flex-start;align-items:stretch}
 .result-layout{display:grid;grid-template-columns:auto 1fr;gap:52px;align-items:center;width:100%;max-width:880px;padding:52px 44px;margin:0 auto}
-.photo-strip{background:#0a0908;width:var(--strip-width);padding:13px 13px 0 13px;display:flex;flex-direction:column;gap:5px;box-shadow:0 28px 70px rgba(0,0,0,.85),0 6px 20px rgba(0,0,0,.6);outline:1px solid rgba(255,255,255,.04)}
+.photo-strip{background:#0a0908;width:var(--strip-width);max-width:100%;padding:13px 13px 0 13px;display:flex;flex-direction:column;gap:5px;box-shadow:0 28px 70px rgba(0,0,0,.85),0 6px 20px rgba(0,0,0,.6);outline:1px solid rgba(255,255,255,.04)}
 .strip-photo{width:100%;height:var(--strip-photo-h);display:block;object-fit:cover;background:#1a1a18}
 .strip-footer{padding:11px 0 14px;display:flex;align-items:center;justify-content:space-between}
 .strip-date{font-family:'Special Elite',monospace;font-size:9px;color:rgba(250,247,242,.4);letter-spacing:.12em}
@@ -109,9 +110,11 @@ body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
 @media(max-width:700px){
   .intro-layout{grid-template-columns:1fr}.intro-right{display:none}
   .intro-left{padding:36px 24px;border-right:none}
-  .result-layout{grid-template-columns:1fr;padding:28px 18px 48px;gap:32px;justify-items:center}
+  .result-layout{grid-template-columns:1fr;padding:28px 20px 56px;gap:28px;justify-items:center}
   .result-panel{align-items:center;text-align:center}.result-actions{align-items:center}
-  :root{--strip-width:260px;--strip-photo-h:195px}
+  .photo-strip{width:min(280px,calc(100vw - 40px));max-width:100%}
+  .strip-photo{height:auto;aspect-ratio:4/3}
+  :root{--strip-width:280px;--strip-photo-h:210px}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
