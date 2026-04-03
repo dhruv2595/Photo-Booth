@@ -529,29 +529,69 @@ function showResult(){
 
 /* DOWNLOAD */
 btnDownload.addEventListener('click',function(){
-  var sw=300,ph=225,gap=5,pad=13,footerH=48;
-  var totalW=sw,totalH=pad+ph*3+gap*2+footerH+pad;
-  var sc=2;stripCanvas.width=totalW*sc;stripCanvas.height=totalH*sc;
-  stripCtx.scale(sc,sc);stripCtx.fillStyle='#0a0908';stripCtx.fillRect(0,0,totalW,totalH);
-  var jobs=capturedImages.map(function(src,i){
+  // Load all captured images first so we can read their real dimensions
+  var loadedImgs=[];
+  var loadJobs=capturedImages.map(function(src){
     return new Promise(function(res){
-      var img=new Image();img.onload=function(){
-        var x=pad,y=pad+i*(ph+gap),sw2=totalW-pad*2;
-        var scW=sw2/img.width,scH=ph/img.height,sc2=Math.max(scW,scH);
-        var dw=img.width*sc2,dh=img.height*sc2,dx=x+(sw2-dw)/2,dy=y+(ph-dh)/2;
-        stripCtx.save();stripCtx.rect(x,y,sw2,ph);stripCtx.clip();stripCtx.drawImage(img,dx,dy,dw,dh);stripCtx.restore();res();
-      };img.src=src;
+      var img=new Image();
+      img.onload=function(){ loadedImgs.push(img); res(); };
+      img.src=src;
     });
   });
-  Promise.all(jobs).then(function(){
+
+  Promise.all(loadJobs).then(function(){
+    // Fixed strip width in output pixels (high-res)
+    var stripW=600, pad=26, gap=10, footerH=60, sc=1;
+
+    // Derive photo slot height from actual image aspect ratio (use first image)
+    // All three are captured at same resolution so aspect is consistent
+    var refImg=loadedImgs[0];
+    var imgAspect=refImg.naturalHeight/refImg.naturalWidth;
+    // slot width = stripW minus padding on each side
+    var slotW=stripW-pad*2;
+    var ph=Math.round(slotW*imgAspect); // height preserves real aspect ratio
+
+    var totalH=pad+ph*3+gap*2+footerH;
+    stripCanvas.width=stripW;
+    stripCanvas.height=totalH;
+
+    // Reset any previous scale transform
+    stripCtx.setTransform(1,0,0,1,0,0);
+    stripCtx.fillStyle='#0a0908';
+    stripCtx.fillRect(0,0,stripW,totalH);
+
+    // Draw each photo into its slot — cover fill within slotW x ph
+    loadedImgs.forEach(function(img,i){
+      var x=pad, y=pad+i*(ph+gap);
+      var scaleW=slotW/img.naturalWidth;
+      var scaleH=ph/img.naturalHeight;
+      var sc2=Math.max(scaleW,scaleH);
+      var dw=img.naturalWidth*sc2, dh=img.naturalHeight*sc2;
+      var dx=x+(slotW-dw)/2, dy=y+(ph-dh)/2;
+      stripCtx.save();
+      stripCtx.beginPath();
+      stripCtx.rect(x,y,slotW,ph);
+      stripCtx.clip();
+      stripCtx.drawImage(img,dx,dy,dw,dh);
+      stripCtx.restore();
+    });
+
+    // Footer text
     var now=new Date();
     var ds=now.toLocaleDateString('en-AU',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,' . ');
-    var fy=pad+ph*3+gap*2+27;
-    stripCtx.font='9px "Special Elite",monospace';stripCtx.fillStyle='rgba(250,247,242,.42)';stripCtx.fillText(ds,pad,fy);
-    stripCtx.textAlign='right';stripCtx.fillStyle='rgba(200,146,42,.42)';stripCtx.fillText('METRO AUTO PHOTO',totalW-pad,fy);
+    var fy=pad+ph*3+gap*2+Math.round(footerH*0.55);
+    stripCtx.font='18px "Special Elite",monospace';
+    stripCtx.fillStyle='rgba(250,247,242,.42)';
+    stripCtx.fillText(ds,pad,fy);
+    stripCtx.textAlign='right';
+    stripCtx.fillStyle='rgba(200,146,42,.45)';
+    stripCtx.fillText('METRO AUTO PHOTO',stripW-pad,fy);
     stripCtx.textAlign='left';
-    var a=document.createElement('a');a.download='metro-auto-photo-'+Date.now()+'.jpg';
-    a.href=stripCanvas.toDataURL('image/jpeg',.95);a.click();
+
+    var a=document.createElement('a');
+    a.download='metro-auto-photo-'+Date.now()+'.jpg';
+    a.href=stripCanvas.toDataURL('image/jpeg',.95);
+    a.click();
   });
 });
 
